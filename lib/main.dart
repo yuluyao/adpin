@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:gy/data/my_store.dart';
 import 'package:gy/theme/theme_data.dart';
 import 'package:gy/theme/theme_persistance.dart';
 import 'package:gy/theme/theme_store.dart';
@@ -23,17 +22,6 @@ void main() async {
 
   runApp(const ProviderScope(child: MyApp()));
 }
-
-// class _EagerInitialization extends HookConsumerWidget {
-//   const _EagerInitialization({required this.child});
-//   final Widget child;
-//   @override
-//   Widget build(BuildContext context, WidgetRef ref) {
-//     ref.read(packageInfoProvider);
-//     ref.watch(userPromptsProvider);
-//     return child;
-//   }
-// }
 
 class MyApp extends HookConsumerWidget {
   const MyApp({super.key});

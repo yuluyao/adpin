@@ -43,23 +43,30 @@ class AdbPath extends _$AdbPath {
     }
 
     String platform = '';
+    List<String> requiredFiles = [];
     if (Platform.isWindows) {
-      platform = 'windows/adb.exe';
+      platform = 'windows';
+      requiredFiles = ['adb.exe', 'AdbWinApi.dll', 'AdbWinUsbApi.dll'];
     } else if (Platform.isMacOS) {
-      platform = 'macos/adb';
+      platform = 'macos';
+      requiredFiles = ['adb'];
     } else if (Platform.isLinux) {
-      platform = 'linux/adb';
+      platform = 'linux';
+      requiredFiles = ['adb'];
     }
 
     final adbPath = '${adbDir.path}/adb${Platform.isWindows ? '.exe' : ''}';
-    final adbFile = File(adbPath);
 
-    if (!adbFile.existsSync()) {
-      final data = await rootBundle.load('assets/bin/$platform');
-      await adbFile.writeAsBytes(data.buffer.asUint8List());
-      // 设置执行权限
-      if (!Platform.isWindows) {
-        await Process.run('chmod', ['+x', adbPath]);
+    // 复制所有必需的文件
+    for (final fileName in requiredFiles) {
+      final targetFile = File('${adbDir.path}/$fileName');
+      if (!targetFile.existsSync()) {
+        final data = await rootBundle.load('assets/bin/$platform/$fileName');
+        await targetFile.writeAsBytes(data.buffer.asUint8List());
+        // 设置执行权限（仅用于非Windows平台）
+        if (!Platform.isWindows && fileName == 'adb') {
+          await Process.run('chmod', ['+x', targetFile.path]);
+        }
       }
     }
 

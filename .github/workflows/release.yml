@@ -1,0 +1,54 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+        include:
+          - os: windows-latest
+            output_path: build/windows/x64/runner/Release
+            asset_name: windows-release.zip
+          - os: macos-latest
+            output_path: build/macos/Build/Products/Release
+            asset_name: macos-release.zip
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.27.0"
+          channel: "stable"
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build for ${{ matrix.os }}
+        run: |
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            flutter build windows --release
+          else
+            flutter build macos --release
+          fi
+        shell: bash
+
+      - name: Create Release ZIP
+        run: |
+          cd ${{ matrix.output_path }}
+          7z a -tzip ../../../../../${{ matrix.asset_name }} *
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ matrix.asset_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

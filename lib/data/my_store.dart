@@ -37,7 +37,7 @@ class AdbPath extends _$AdbPath {
 
   Future<String> _getBuiltinAdb() async {
     final tempDir = await getTemporaryDirectory();
-    final adbDir = Directory('${tempDir.path}/adb');
+    final adbDir = Directory('${tempDir.path}${Platform.pathSeparator}adb');
     if (!adbDir.existsSync()) {
       adbDir.createSync();
     }
@@ -55,13 +55,15 @@ class AdbPath extends _$AdbPath {
       requiredFiles = ['adb'];
     }
 
-    final adbPath = '${adbDir.path}/adb${Platform.isWindows ? '.exe' : ''}';
+    final adbPath = '${adbDir.path}${Platform.pathSeparator}adb${Platform.isWindows ? '.exe' : ''}';
 
     // 复制所有必需的文件
     for (final fileName in requiredFiles) {
-      final targetFile = File('${adbDir.path}/$fileName');
+      final targetFile = File('${adbDir.path}${Platform.pathSeparator}$fileName');
       if (!targetFile.existsSync()) {
-        final data = await rootBundle.load('assets/bin/$platform/$fileName');
+        // 使用 path.join 来处理资源路径
+        final assetPath = ['assets', 'bin', platform, fileName].join('/');
+        final data = await rootBundle.load(assetPath);
         await targetFile.writeAsBytes(data.buffer.asUint8List());
         // 设置执行权限（仅用于非Windows平台）
         if (!Platform.isWindows && fileName == 'adb') {

@@ -31,7 +31,7 @@ class MyApp extends HookConsumerWidget {
     final mode = ref.watch(gyThemeModeProvider);
 
     return MaterialApp(
-      title: 'adb helper',
+      title: 'adb-pin',
       theme: buildThemeData(lightColorScheme()),
       darkTheme: buildThemeData(darkColorScheme()),
       themeMode: mode,

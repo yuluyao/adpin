@@ -33,8 +33,22 @@ jobs:
           flutter-version: "3.27.0"
           channel: "stable"
 
+      - name: Disable Flutter analytics and confirm
+        run: |
+          flutter config --no-analytics
+          flutter doctor --android-licenses
+        continue-on-error: true
+
+      - name: Configure Flutter
+        shell: bash
+        run: |
+          mkdir -p $HOME/.flutter
+          echo '{"analytics-enabled":false}' > $HOME/.flutter/settings
+
       - name: Get dependencies
         run: flutter pub get
+        env:
+          FLUTTER_DISABLE_ANALYTICS: true
 
       - name: Install Apple Certificate
         if: matrix.os == 'macos-latest'

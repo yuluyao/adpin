@@ -5,6 +5,10 @@ on:
     tags:
       - "v*"
 
+# 添加权限配置
+permissions:
+  contents: write # 允许创建release和上传文件
+
 jobs:
   build:
     name: Build ${{ matrix.os }}
@@ -32,12 +36,27 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
+      - name: Install Apple Certificate
+        if: matrix.os == 'macos-latest'
+        run: |
+          # 创建钥匙串
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+
+      - name: Configure Xcode
+        if: matrix.os == 'macos-latest'
+        run: |
+          # 允许任何开发者证书
+          /usr/bin/xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+
       - name: Build for ${{ matrix.os }}
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             flutter build windows --release
           else
-            flutter build macos --release
+            flutter build macos --release --no-codesign
           fi
         shell: bash
 

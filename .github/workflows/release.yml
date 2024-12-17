@@ -5,94 +5,58 @@ on:
     tags:
       - "v*"
 
-# 添加权限配置
 permissions:
-  contents: write # 允许创建release和上传文件
+  contents: write
 
 jobs:
   build:
-    name: Build ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [windows-latest, macos-latest]
-        include:
-          - os: windows-latest
-            output_path: build/windows/x64/runner/Release
-            asset_name: windows-release.zip
-          - os: macos-latest
-            output_path: build/macos/Build/Products/Release
-            asset_name: macos-release.zip
+    name: Build Windows
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v3
 
-      # 添加缓存步骤
-      - name: Cache Flutter dependencies
+      # 缓存配置
+      - name: Cache Flutter SDK
         uses: actions/cache@v3
+        id: flutter-cache
         with:
           path: |
-            ${{ runner.tool_cache }}/flutter
-            ~/.pub-cache
-            %LOCALAPPDATA%\Pub\Cache
-            ~/Library/Caches/CocoaPods
-            ~/.gradle
-          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
+            C:\hostedtoolcache\windows\flutter
+            ${{ env.LOCALAPPDATA }}\Pub\Cache
+          key: flutter-windows-${{ hashFiles('pubspec.lock') }}
           restore-keys: |
-            ${{ runner.os }}-flutter-
+            flutter-windows-
+
+      # 如果缓存未命中，手动下载 Flutter SDK
+      - name: Download Flutter SDK
+        if: steps.flutter-cache.outputs.cache-hit != 'true'
+        shell: powershell
+        run: |
+          $ProgressPreference = 'SilentlyContinue'
+          Invoke-WebRequest -Uri "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.27.0-stable.zip" -OutFile "flutter.zip"
+          Expand-Archive -Path "flutter.zip" -DestinationPath "C:\hostedtoolcache\windows"
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.27.0"
           channel: "stable"
-          cache: true # 启用 Flutter 工具的缓存
+          cache: true
         env:
           FLUTTER_DISABLE_ANALYTICS: true
 
-      # macOS 特定的配置
-      - name: Configure Flutter (macOS)
-        if: matrix.os == 'macos-latest'
-        shell: bash
-        run: |
-          flutter config --enable-macos-desktop
-          flutter precache --macos
-          flutter create --platforms=macos .
-          flutter pub get
-          flutter pub get
-          cd macos
-          pod install
-        env:
-          FLUTTER_DISABLE_ANALYTICS: true
-
-      - name: Install Apple Certificate
-        if: matrix.os == 'macos-latest'
-        run: |
-          security create-keychain -p "" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "" build.keychain
-          security set-keychain-settings -t 3600 -u build.keychain
-
-      - name: Build for ${{ matrix.os }}
-        shell: bash
-        run: |
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            flutter build windows --release
-          else
-            flutter config --enable-macos-desktop
-            flutter clean
-            flutter pub get
-            flutter build macos --release --no-codesign --verbose
-          fi
+      - name: Build Windows
+        run: flutter build windows --release
 
       - name: Create Release ZIP
         run: |
-          cd ${{ matrix.output_path }}
-          7z a -tzip ../../../../../${{ matrix.asset_name }} *
+          cd build/windows/x64/runner/Release
+          7z a -tzip ../../../../../windows-release.zip *
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         with:
-          files: ${{ matrix.asset_name }}
+          files: windows-release.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

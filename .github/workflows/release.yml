@@ -27,14 +27,28 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      # 添加缓存步骤
+      - name: Cache Flutter dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ runner.tool_cache }}/flutter
+            ~/.pub-cache
+            %LOCALAPPDATA%\Pub\Cache
+            ~/Library/Caches/CocoaPods
+            ~/.gradle
+          key: ${{ runner.os }}-flutter-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-flutter-
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.27.0"
           channel: "stable"
+          cache: true # 启用 Flutter 工具的缓存
         env:
           FLUTTER_DISABLE_ANALYTICS: true
-          ANDROID_SDK_ACCEPT_LICENSES: true
 
       # macOS 特定的配置
       - name: Configure Flutter (macOS)
@@ -44,25 +58,10 @@ jobs:
           flutter config --enable-macos-desktop
           flutter precache --macos
           flutter create --platforms=macos .
-          flutter clean
           flutter pub get
-        env:
-          FLUTTER_DISABLE_ANALYTICS: true
-
-      # Windows 特定的配置
-      - name: Configure Flutter (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: powershell
-        run: |
-          New-Item -ItemType Directory -Force -Path "$env:LOCALAPPDATA\flutter"
-          Set-Content -Path "$env:LOCALAPPDATA\flutter\settings" -Value '{"analytics-enabled":false}'
-
-      # 使用 powershell 在 Windows 上运行 pub get
-      - name: Get dependencies (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: powershell
-        run: |
           flutter pub get
+          cd macos
+          pod install
         env:
           FLUTTER_DISABLE_ANALYTICS: true
 
@@ -74,19 +73,16 @@ jobs:
           security unlock-keychain -p "" build.keychain
           security set-keychain-settings -t 3600 -u build.keychain
 
-      - name: Configure Xcode
-        if: matrix.os == 'macos-latest'
-        run: |
-          # 允许任何开发者证书
-          /usr/bin/xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
-
       - name: Build for ${{ matrix.os }}
         shell: bash
         run: |
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             flutter build windows --release
           else
-            flutter build macos --release --no-codesign
+            flutter config --enable-macos-desktop
+            flutter clean
+            flutter pub get
+            flutter build macos --release --no-codesign --verbose
           fi
 
       - name: Create Release ZIP

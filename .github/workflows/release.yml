@@ -16,33 +16,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # 缓存配置
-      - name: Cache Flutter SDK
-        uses: actions/cache@v3
-        id: flutter-cache
-        with:
-          path: |
-            C:\hostedtoolcache\windows\flutter
-            ${{ env.LOCALAPPDATA }}\Pub\Cache
-          key: flutter-windows-${{ hashFiles('pubspec.lock') }}
-          restore-keys: |
-            flutter-windows-
-
-      # 如果缓存未命中，手动下载 Flutter SDK
-      - name: Download Flutter SDK
-        if: steps.flutter-cache.outputs.cache-hit != 'true'
-        shell: powershell
-        run: |
-          $ProgressPreference = 'SilentlyContinue'
-          Invoke-WebRequest -Uri "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.27.0-stable.zip" -OutFile "flutter.zip"
-          Expand-Archive -Path "flutter.zip" -DestinationPath "C:\hostedtoolcache\windows"
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.27.0"
           channel: "stable"
-          cache: true
         env:
           FLUTTER_DISABLE_ANALYTICS: true
 
